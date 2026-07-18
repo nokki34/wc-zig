@@ -89,21 +89,29 @@ matching the micro-benchmark. Still ~12× slower than GNU `wc` **on the `-l`-onl
 - GNU `wc -l` counts newlines with SIMD `memchr` and skips the word state machine entirely.
 - `wc_zig` always runs the full per-byte loop (newline + whitespace + word-state) even for `-l`.
 
-**But all-three is a different story.** Comparing full counts (64 MiB, correctness equal:
-1,525,201 / 13,726,813 / 67,108,864):
+**All-three counts, three-way** (64 MiB, correctness equal: 1,525,201 / 13,726,813 / 67,108,864).
 
-| Program | Total time (best of 5) | Throughput |
+> Correction: an earlier version of this file claimed `wc_zig` was ~10% *faster* than GNU `wc`
+> at all three counts. That compared against `wc` in the shell's default **UTF-8 locale**, which
+> is not a fair fight — see below.
+
+| Program | Total time (best of 5) | Note |
 |---|---|---|
-| `wc_zig` (l+w+c) | **0.047 s** | ~1.36 GiB/s |
-| GNU `wc -lwc` | 0.052 s | ~1.23 GiB/s |
+| `wc_zig` (l+w+c) | 0.047 s | byte-oriented, ASCII only |
+| GNU `wc -lwc` (default `en_US.UTF-8`) | 0.053 s | decodes multibyte per char |
+| GNU `wc -lwc` (`LC_ALL=C`) | **0.034 s** | byte mode — apples-to-apples |
 
-**`wc_zig` is ~10% *faster* than GNU `wc` at all three counts.** The 12× gap only exists for
-`-l` alone, because that's the one case GNU `wc` special-cases (memchr, no word work). Once
-words are required, GNU `wc` runs a per-byte state machine too — and ours is slightly faster.
+**`wc_zig` only *looked* faster because default `wc` does more work.** In a UTF-8 locale GNU `wc`
+treats the input as a multibyte stream — it decodes each character (`mbrtoc32`) and calls
+`iswspace` on the code point to find word boundaries. `wc_zig` skips all of that and tests raw
+bytes against the ASCII whitespace set (which also means it would miscount genuinely multibyte
+input — partly a correctness shortcut, not a pure win).
 
-**Takeaway:** the all-3 path is already at/above parity; no gap to close there. The only real
-opportunity left is the `-l`-only fast path.
+Put GNU `wc` in byte mode (`LC_ALL=C`, what `wc_zig` effectively does) and **it is ~30% faster
+than `wc_zig`** — its byte-path loop is better optimized. So there *is* still a gap on the all-3
+path, against `LC_ALL=C wc`.
 
-**Next lever (optional)**
-- [ ] Specialize `-l`-only: count newlines with a vectorized/`@Vector` scan (memchr-style)
-  instead of the per-byte state machine. Only helps the lines-only path — all-3 already wins.
+**Next levers (optional)**
+- [ ] Close the all-3 gap vs `LC_ALL=C wc`: SIMD/`@Vector` word-counter (whitespace bitmask +
+  `@popCount`) to break the serial `word_reset` dependency.
+- [ ] Specialize `-l`-only: vectorized newline scan (memchr-style), skipping word work entirely.
