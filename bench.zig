@@ -5,12 +5,12 @@ const std = @import("std");
 const counter = @import("src/root.zig");
 
 // Mimic main.zig: walk the buffer in `chunk`-sized pieces, threading word_reset.
-fn countAll(buf: []const u8, chunk: u8) counter.Count {
+fn countAll(buf: []const u8, chunk: usize) counter.Count {
     var total = counter.Count{ .bytes = 0, .lines = 0, .words = 0 };
     var word_reset = true;
     var off: usize = 0;
     while (off < buf.len) : (off += chunk) {
-        const n: u8 = @intCast(@min(@as(usize, chunk), buf.len - off));
+        const n = @min(chunk, buf.len - off);
         const c = counter.count(buf[off .. off + n], &word_reset, n);
         total.bytes += c.bytes;
         total.lines += c.lines;
@@ -33,9 +33,9 @@ pub fn main() !void {
     var sink: u64 = 0;
     var it: usize = 0;
     while (it < iters) : (it += 1) {
-        sink +%= countAll(buf, 64).words; // 64 = main.zig's chunk size
+        sink +%= countAll(buf, 64 * 1024).words; // matches main.zig's chunk size
     }
 
     const total_mib = (size / (1024 * 1024)) * iters;
-    std.debug.print("counted {d} MiB total (chunk=64)\nsink={d}\n", .{ total_mib, sink });
+    std.debug.print("counted {d} MiB total (chunk=64 KiB)\nsink={d}\n", .{ total_mib, sink });
 }

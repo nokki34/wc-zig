@@ -6,7 +6,7 @@ const testing = std.testing;
 const mem = std.mem;
 
 const Error = error{ WrongArgument, FileNotSupported };
-const stdin_buf_size = 64;
+const stdin_buf_size = 64 * 1024;
 
 // only works with -l (lines) for now otherwise exit 1
 // Reads stdin
@@ -32,7 +32,7 @@ pub fn main(init: std.process.Init) !void {
     while (true) {
         const size = try stdin_reader.readSliceShort(&str);
 
-        const counts = counter.count(&str, &word_reset, @truncate(size));
+        const counts = counter.count(&str, &word_reset, size);
 
         result += @as(@Vector(3, u64), .{ counts.lines, counts.words, counts.bytes });
 

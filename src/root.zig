@@ -6,10 +6,10 @@ const testing = std.testing;
 // bytes lines words
 pub const Count = packed struct { bytes: u64, lines: u64, words: u64 };
 
-pub fn count(buf: []const u8, word_reset: *bool, size: u8) Count {
-    var i: u8 = 0;
-    var lines: u8 = 0;
-    var words: u8 = 0;
+pub fn count(buf: []const u8, word_reset: *bool, size: usize) Count {
+    var i: usize = 0;
+    var lines: u64 = 0;
+    var words: u64 = 0;
     while (i < size) : (i += 1) {
         if (buf[i] == '\n') {
             lines += 1;
@@ -25,14 +25,14 @@ pub fn count(buf: []const u8, word_reset: *bool, size: u8) Count {
     return .{ .bytes = size, .lines = lines, .words = words };
 }
 
-const EchoOut = struct { []const u8, *bool, u8 };
+const EchoOut = struct { []const u8, *bool, usize };
 
 var echo_word_reset = true;
 
 fn echo(comptime text: []const u8) EchoOut {
     const buf: []const u8 = text ++ "\n";
     echo_word_reset = true;
-    return .{ buf, &echo_word_reset, @intCast(buf.len) };
+    return .{ buf, &echo_word_reset, buf.len };
 }
 
 test "count" {
