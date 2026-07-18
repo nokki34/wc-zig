@@ -91,12 +91,9 @@ fn printResult(writer: *std.Io.Writer, counts: [3]u64, flags: Flags) !void {
     var i: usize = 0;
 
     while (i < 3) : (i += 1) {
-        if (!single) {
-            try writer.writeByte('\t');
-        }
-
         if (flags_arr[i] == 1) {
-            try writer.print("{d}", .{counts[i]});
+            if (single) try writer.print("{d}", .{counts[i]}) 
+            else try writer.print("    {d}", .{counts[i]});
         }
     }
     try writer.writeByte('\n');
